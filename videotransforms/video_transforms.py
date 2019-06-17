@@ -11,6 +11,8 @@ import torchvision
 
 from . import functional as F
 
+from torchvision.transforms import ToPILImage, ToTensor
+
 
 class Compose(object):
     """Composes several transforms
@@ -300,33 +302,47 @@ class ColorJitter(object):
         Returns:
         list PIL.Image : list of transformed PIL.Image
         """
-        if isinstance(clip[0], np.ndarray):
-            raise TypeError(
-                'Color jitter not yet implemented for numpy arrays')
-        elif isinstance(clip[0], PIL.Image.Image):
+        
+        isNdArray = isinstance(clip[0], np.ndarray)
+        
+        converter = ToPILImage()
+        unconverter = ToTensor()
+        
+        if isNdArray:
+            clip = [converter(frame) for frame in clip]
+
+        if isinstance(clip[0], PIL.Image.Image):
             brightness, contrast, saturation, hue = self.get_params(
                 self.brightness, self.contrast, self.saturation, self.hue)
-
-            # Create img transform function sequence
-            img_transforms = []
-            if brightness is not None:
-                img_transforms.append(lambda img: torchvision.transforms.functional.adjust_brightness(img, brightness))
-            if saturation is not None:
-                img_transforms.append(lambda img: torchvision.transforms.functional.adjust_saturation(img, saturation))
-            if hue is not None:
-                img_transforms.append(lambda img: torchvision.transforms.functional.adjust_hue(img, hue))
-            if contrast is not None:
-                img_transforms.append(lambda img: torchvision.transforms.functional.adjust_contrast(img, contrast))
-            random.shuffle(img_transforms)
-
-            # Apply to all images
-            jittered_clip = []
-            for img in clip:
-                for func in img_transforms:
-                    jittered_img = func(img)
-                jittered_clip.append(jittered_img)
-
         else:
-            raise TypeError('Expected numpy.ndarray or PIL.Image' +
-                            'but got list of {0}'.format(type(clip[0])))
+            raise TypeError(f'Trying to convert from {type(clip[0])} format that is not supported.')
+
+        # Create img transform function sequence
+        img_transforms = []
+        if brightness is not None:
+            img_transforms.append(lambda img: torchvision.transforms.functional.adjust_brightness(img, brightness))
+        if saturation is not None:
+            img_transforms.append(lambda img: torchvision.transforms.functional.adjust_saturation(img, saturation))
+        if hue is not None:
+            img_transforms.append(lambda img: torchvision.transforms.functional.adjust_hue(img, hue))
+        if contrast is not None:
+            img_transforms.append(lambda img: torchvision.transforms.functional.adjust_contrast(img, contrast))
+        random.shuffle(img_transforms)
+
+        # Apply to all images
+        jittered_clip = []; jittered_img = None
+        
+        for img in clip:
+            for func in img_transforms:
+                jittered_img = func(img)
+            jittered_clip.append(jittered_img)
+        
+        if isNdArray:
+            
+            convertedClip = [] 
+            for jitteredFrame in jittered_clip:
+                convertedClip.append( np.array(jitteredFrame, dtype=np.uint8).reshape(jitteredFrame.size[1], jitteredFrame.size[0], 3) )
+            
+            jittered_clip = np.array(convertedClip)
+            
         return jittered_clip
