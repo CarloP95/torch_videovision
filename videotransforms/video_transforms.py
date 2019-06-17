@@ -346,3 +346,30 @@ class ColorJitter(object):
             jittered_clip = np.array(convertedClip)
             
         return jittered_clip
+
+
+class TemporalCrop(object):
+    """Extract center crop at the same location for a list of images
+
+    Args:
+    size (sequence or int): Desired output size for the
+    crop in format (h, w)
+    """
+
+    def __init__(self, numFrames):
+        
+        assert isinstance(numFrames, int)
+        
+        self.numFrames = numFrames
+
+    def __call__(self, clip):
+        """
+        Args:
+        img (numpy.ndarray): List of images to be cropped
+        in format (#frames, h, w, channels) in numpy.ndarray
+
+        Returns:
+        numpy.ndarray: Cropped list of images
+        """
+        
+        return clip[ : , : self.numFrames, :, : ]
