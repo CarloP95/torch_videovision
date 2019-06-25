@@ -47,7 +47,7 @@ class RandomHorizontalFlip(object):
         """
         if random.random() < 0.5:
             if isinstance(clip[0], np.ndarray):
-                return [np.fliplr(img) for img in clip]
+                return np.array([np.fliplr(img) for img in clip])
             elif isinstance(clip[0], PIL.Image.Image):
                 return [
                     img.transpose(PIL.Image.FLIP_LEFT_RIGHT) for img in clip
@@ -107,8 +107,8 @@ class Resize(object):
         self.interpolation = interpolation
 
     def __call__(self, clip):
-        resized = F.resize_clip(
-            clip, self.size, interpolation=self.interpolation)
+        resized = np.array(F.resize_clip(
+            clip, self.size, interpolation=self.interpolation))
         return resized
 
 
@@ -297,12 +297,11 @@ class ColorJitter(object):
     def __call__(self, clip):
         """
         Args:
-        clip (list): list of PIL.Image
+        clip (list or ndarray): list of PIL.Image or ndarray
 
         Returns:
-        list PIL.Image : list of transformed PIL.Image
+        list PIL.Image or ndarray : list of transformed PIL.Image or ndarray if input is of this type.
         """
-        
         isNdArray = isinstance(clip[0], np.ndarray)
         
         converter = ToPILImage()
@@ -310,7 +309,7 @@ class ColorJitter(object):
         
         if isNdArray:
             clip = [converter(frame) for frame in clip]
-
+        
         if isinstance(clip[0], PIL.Image.Image):
             brightness, contrast, saturation, hue = self.get_params(
                 self.brightness, self.contrast, self.saturation, self.hue)
@@ -341,6 +340,7 @@ class ColorJitter(object):
             
             convertedClip = [] 
             for jitteredFrame in jittered_clip:
+                
                 convertedClip.append( np.array(jitteredFrame, dtype=np.uint8).reshape(jitteredFrame.size[1], jitteredFrame.size[0], 3) )
             
             jittered_clip = np.array(convertedClip)
@@ -349,18 +349,24 @@ class ColorJitter(object):
 
 
 class TemporalCrop(object):
-    """Extract center crop at the same location for a list of images
+    """Extract temporal crop for frames in video.
 
     Args:
-    size (sequence or int): Desired output size for the
-    crop in format (h, w)
+    
+    numFrames: int
+        numFrames to crop.
+    
+    start_frame_idx: int, default 0
+        start_frame index to begin cropping. 
     """
 
-    def __init__(self, numFrames):
+    def __init__(self, numFrames, start_frame_idx = 0):
         
         assert isinstance(numFrames, int)
+        assert isinstance(start_frame_idx, int)
         
         self.numFrames = numFrames
+        self.start_frame_idx = start_frame_idx
 
     def __call__(self, clip):
         """
@@ -372,4 +378,47 @@ class TemporalCrop(object):
         numpy.ndarray: Cropped list of images
         """
         
-        return clip[ : , : self.numFrames, :, : ]
+        return clip[ : , self.start_frame_idx : self.start_frame_idx + self.numFrames, :, : ]
+
+
+class RandomTemporalCrop(object):
+    """Extract random temporal crop for frames in video.
+
+    Args:
+    
+    numFrames: int
+        numFrames to crop.
+    
+    """
+
+    def __init__(self, numFrames):
+        
+        assert isinstance(numFrames, int)
+        
+        self.numFrames = numFrames
+
+
+    def __call__(self, clip):
+        """
+        Args:
+        img (numpy.ndarray): List of images to be cropped
+        in format (#frames, h, w, channels) in numpy.ndarray
+
+        Returns:
+        numpy.ndarray: Cropped list of images
+        """
+        #try:
+            #print(f"RandomTemporalCrop: {clip.shape}")
+            
+        #except AttributeError as _:
+            #print(f"The clip is not a ndarray neither a tensor: {type(clip)}, {len(clip)}")
+            
+        random_start_frame_idx = -1
+        
+        try:
+            random_start_frame_idx = np.random.randint(0, clip.shape[1] - self.numFrames)
+        
+        except ValueError as _:
+            random_start_frame_idx = 0 #Video has the exact number of frames requested.
+        
+        return clip[ : , random_start_frame_idx : random_start_frame_idx + self.numFrames, :, : ]

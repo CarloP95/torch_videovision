@@ -2,7 +2,7 @@ import numpy as np
 import PIL
 import torch
 
-from videotransforms.utils import images as imageutils
+from torch_videovision.videotransforms.utils import images as imageutils
 
 
 class ToStackedTensor(object):
