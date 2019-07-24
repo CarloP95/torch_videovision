@@ -1,3 +1,5 @@
+import torch
+
 def normalize(tensor, mean, std):
     """
     Args:
@@ -6,5 +8,11 @@ def normalize(tensor, mean, std):
     Returns:
         Tensor: Normalized tensor
     """
-    tensor.sub_(mean).div_(std)
-    return tensor
+    try:
+        res = (tensor.numpy() - mean) / std
+    except ValueError as _:
+        res = (tensor.numpy().transpose(1, 2, 3, 0) - mean) / std
+        res = res.transpose(3, 0, 1, 2)
+    #tensor.sub_(mean).div_(std)
+
+    return torch.FloatTensor(res)

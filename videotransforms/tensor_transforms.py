@@ -1,3 +1,4 @@
+import numpy as np
 import random
 
 from torch_videovision.videotransforms.utils import functional as F
@@ -27,7 +28,12 @@ class Normalize(object):
         Returns:
             Tensor: Normalized stack of image of image
         """
-        return F.normalize(tensor, self.mean, self.std)
+        if isinstance(tensor, np.ndarray):
+            tensor = (tensor - self.mean)/self.std
+        else:
+            tensor = F.normalize(tensor, self.mean, self.std)
+            
+        return tensor
 
 
 class SpatialRandomCrop(object):
